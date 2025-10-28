@@ -2,11 +2,15 @@ import java.io.IOException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.ArrayList;
+import java.util.List;
+
+import com.google.gson.Gson;
 
 public class ApiClient {
     private final HttpClient client = HttpClient.newHttpClient();
 
-    public String fetchQuestions(int amount, String difficulty, String type){
+    public List<APIQuestion> fetchQuestions(int amount, String difficulty, String type){
         // https://opentdb.com/api.php?amount=5&difficulty=easy&type=multiple
 
         // Creo l'url parametrizzato
@@ -20,17 +24,22 @@ public class ApiClient {
                 .build();
 
         // Creo un oggetto risposta e controllo se manda eccezioni
-        HttpResponse<String> resp;
         try {
-            resp = client.send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> resp = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+            Gson gson = new Gson();
+            APIResponse apiResponse = gson.fromJson(resp.body(), APIResponse.class);
+
+            if (apiResponse != null && apiResponse.results != null) {
+                return apiResponse.results;
+            } else {
+                System.out.println("⚠️ Nessuna domanda trovata per " + difficulty);
+                return new ArrayList<>(); // Restituisco una lista vuota
+            }
+
         } catch (IOException | InterruptedException e) {
-            throw new RuntimeException("Failed to fetch questions:" + e.getMessage(), e);
+            System.out.println("Errore nella richiesta API: " + e.getMessage());
+            return new ArrayList<>();
         }
-
-        if(resp == null){
-            throw new RuntimeException("No response received from the API");
-        }
-
-        return resp.body();
     }
 }
